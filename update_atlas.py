@@ -1,15 +1,15 @@
 from pathlib import Path
 from datetime import date
 
-ROOT = Path(__file__).parent
+ROOT = Path(__file__).parent.resolve()
 ATLAS_FILE = ROOT / "ATLAS.md"
 
-# List your vaults here
-VAULTS = [
-    ROOT / "biosignal-wiki",
-    ROOT / "ml-wiki",
-    # add more as you create them
-]
+# Auto-discover all vaults in the vaults/ directory
+VAULTS_DIR = ROOT / "vaults"
+VAULTS = sorted(
+    [p.resolve() for p in VAULTS_DIR.iterdir() if p.is_dir() and (p / "WIKI_STATUS.md").exists()],
+    key=lambda x: x.name.lower()
+)
 
 def read_file(path: Path) -> str:
     return path.read_text(encoding="utf-8") if path.exists() else ""
@@ -24,11 +24,26 @@ def parse_status(status_content: str) -> dict:
             result["last_updated"] = line.split("Last updated:")[-1].strip()
         if "Papers:" in line:
             result["papers"] = line.split("Papers:")[-1].strip()
+        if "Knowledge notes:" in line:
+            result["notes"] = line.split("Knowledge notes:")[-1].strip()
+        if "Books:" in line:
+            result["books"] = line.split("Books:")[-1].strip()
         if "Concepts:" in line:
             result["concepts"] = line.split("Concepts:")[-1].strip()
         if "Entities:" in line:
             result["entities"] = line.split("Entities:")[-1].strip()
     return result
+
+def trim_overview(text: str, max_chars: int = 2500) -> str:
+    """Trim at a clean paragraph boundary, not mid-sentence."""
+    if len(text) <= max_chars:
+        return text
+    truncated = text[:max_chars]
+    # Find last double-newline (paragraph break) before the limit
+    last_para = truncated.rfind("\n\n")
+    if last_para > max_chars // 2:  # Only cut at paragraph if it's reasonably far in
+        return truncated[:last_para].strip() + "\n\n_[...overview continues — open `30_wiki/overview.md` for full content]_"
+    return truncated.strip() + "..."
 
 def build_atlas():
     today = date.today().isoformat()
@@ -49,22 +64,26 @@ def build_atlas():
         vault_name = vault.name
         status = parse_status(read_file(vault / "WIKI_STATUS.md"))
         overview = read_file(vault / "30_wiki" / "overview.md").strip()
+        overview_display = trim_overview(overview)
 
-        # Truncate overview if too long
-        if len(overview) > 500:
-            overview = overview[:500] + "..."
+        stats = (
+            f"**Papers:** {status.get('papers', '0')} | "
+            f"**Notes:** {status.get('notes', '0')} | "
+            f"**Books:** {status.get('books', '0')} | "
+            f"**Concepts:** {status.get('concepts', '0')} | "
+            f"**Entities:** {status.get('entities', '0')}"
+        )
 
+        vault_rel = vault.relative_to(ROOT)
         lines += [
             f"## {vault_name}",
             f"- **Last updated:** {status.get('last_updated', 'unknown')}",
             f"- **Last action:** {status.get('last_action', 'unknown')}",
-            f"- **Papers:** {status.get('papers', '0')} | "
-            f"**Concepts:** {status.get('concepts', '0')} | "
-            f"**Entities:** {status.get('entities', '0')}",
-            f"- **Path:** `{vault}/`",
+            f"- {stats}",
+            f"- **Path:** `{vault_rel}/`",
             "",
             "### What this vault covers",
-            overview if overview else "_No overview yet — run ingest first._",
+            overview_display if overview_display else "_No overview yet — run ingest first._",
             "",
             "---",
             "",
