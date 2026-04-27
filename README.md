@@ -1,47 +1,17 @@
-```text
-┌────────────────────────────┐
-│       ROUTE WIKI GRAPH       │
-└────────────────────────────┘
-               │
-               ▼
-┌────────────────────────────┐
-│  Input: user question      │
-│ (natural language)         │
-└────────────────────────────┘
-               │
-               ▼
-┌────────────────────────────┐
-│  Route.py                  │
-│                            │
-│ 1) Parse question          │
-│ 2) Route to...             │
-│    - atlas.md (summary)    │
-│    - vault/ (specific)     │
-│ 3) Call LLM                │
-│ 4) Generate response       │
-└────────────────────────────┘
-               │
-               ▼
-┌────────────────────────────┐
-│  Output:                  │
-│ - Direct answer            │
-│ - Citations                │
-│ - "See also" links         │
-└────────────────────────────┘
-```
+# Multi-Vault Knowledge Router
 
-# Background
+A specialized routing system designed to manage and navigate across multiple, independent knowledge vaults. Using natural language queries, it directs you to the most relevant vault and provides suggested queries for deeper exploration.
 
-The Route-Wiki Graph is a tool that allows you to query your Obsidian vault with natural language questions.
-I build this to support navigate my notes and answer my questions based on all my knowledge base, which was build by my [wiki-llm-graph-knowledge](https://github.com/HeigatVu/wiki-llm-graph-knowledge)
+## Architecture
 
-# How to use it
+The system operates on a "Hub and Spoke" model:
 
-```bash
-uv run route.py "What is the best way to learn quantum computing?"
-```
+1.  **The Router (Hub):** This repository. It maintains a central registry (`ATLAS.md`) of all available knowledge.
+2.  **The Vaults (Spokes):** Independent wiki repositories located in the `vaults/` directory.
 
-- It will first check its internal "Knowledge Atlas" (atlas.md)
-- If the answer is not there, it will search your entire vault for relevant notes
-- It uses an LLM (Ollama or Gemini) to understand your question and generate a clear answer
-- Citations are automatically included so you know which notes were used
+### Dependency: Vault Schema
+For the router to index a vault, it **must** follow the schema defined in the [wiki-llm-graph-knowledge](https://github.com/HeigatVu/wiki-llm-graph-knowledge) repository.
+
+The router specifically looks for:
+- `30_wiki/overview.md`: A high-level summary of the vault's content.
+- `WIKI_STATUS.md`: Automatically generated statistics and last-action timestamps.
